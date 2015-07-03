@@ -1,2 +1,9 @@
 # goodb
-Goodb is a lightweight library for work with mysql (MYSQL ORM)
+Goodb is a lightweight library for work with mysql<br>
+you can do the following operations easily :<br>
+insert - delete - update<br>
+
+Goodb is simple and understandable for newcomer in Go.<br>
+with use goodb you can reduce your code size ...<br>
+
+Examples and complete package soon ...
