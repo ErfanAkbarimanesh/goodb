@@ -1,6 +1,6 @@
 //Copyright (c) 2015 Erfan Akbarimanesh
 //The source code is completely free, you can customize for you'r self
-package goodb
+package main
 
 import (
     "database/sql"
@@ -29,6 +29,8 @@ type (
         MSPassword  string
         Charset     string
     }
+    
+    rowsType  map[uint64]map[string]interface{}
 )
 
 var (
@@ -98,12 +100,19 @@ func (mdb *MainModel) RowCount(parameter interface{}) (uint64, error) {
         case nil :
             condition = ""
     }
-    sqlCommand := fmt.Sprintf("SELECT COUNT(*) FROM `%s` %s", mdb.table, condition)
+    sqlCommand := fmt.Sprintf("SELECT COUNT(*) FROM `%s` %v", mdb.table, condition)
     err := mdb.DB.QueryRow(sqlCommand).Scan(&count)
     if err != nil {
         return 0, err
     }
     return count, err 
+}
+
+func (mdb *MainModel) Select(fields string) *sql.Rows {   
+    sqlCommand := fmt.Sprintf("SELECT %s FROM %s %v", fields, mdb.table, mdb.condition)
+    res, err := mdb.DB.Query(sqlCommand)
+    CheckErr(err)
+    return res
 }
 
 func (mdb *MainModel) RemoveByParam(parameter string) (uint64, error) {
@@ -182,6 +191,46 @@ func (mdb *MainModel) UpdateData(data map[string]interface{}) (uint64, error) {
     }
     
     return uint64(affect), err
+}
+
+func rowsResult(rs *sql.Rows) rowsType {
+    cols, count := rowsColumn(rs)
+    
+    var (
+        sqlResult  rowsType       =  make(rowsType)
+        crude      []sql.RawBytes =  make([]sql.RawBytes, count)
+        storeAddr  []interface{}  =  make([]interface{}, len(crude))
+        counter    uint64 = 0
+    )
+    
+    for keyNum := range crude {
+		storeAddr[keyNum] = &crude[keyNum]
+	}
+    
+    for rs.Next() {
+        sqlResult[counter] = make(map[string]interface{})
+        CheckErr(rs.Scan(storeAddr...))
+        
+        for key, val := range crude {
+            sqlResult[counter][cols[key]] = string(val)
+        }
+        counter++
+    }
+
+    return sqlResult
+}
+
+func rowsColumn(rs *sql.Rows)  ([]string, int64) {
+    cols, err := rs.Columns()
+    CheckErr(err)
+    return cols, int64(len(cols))
+}
+
+func (mdb *MainModel) Reset() {
+    mdb.condition = ""
+    mdb.limited   = ""
+    mdb.sorting   = ""
+    mdb.parameter = ""
 }
 
 func (mdb *MainModel) CloseDB() {
