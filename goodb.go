@@ -1,3 +1,5 @@
+//Copyright (c) 2015 Erfan Akbarimanesh
+//The source code is completely free, you can customize for you'r self
 package goodb
 
 import (
@@ -75,7 +77,7 @@ func (mdb *MainModel) SortBy(classify, kind string) *MainModel {
 
 //Limited([2]int{0, -1})  >>> 0
 //Limited([2]int{0, 10})  >>> 0-10
-func (mdb *MainModel) Limited(lparam [2]int32)  {
+func (mdb *MainModel) Limited(lparam [2]int32) *MainModel {
     var starter uint32 = uint32(lparam[0])
     var ls string 
     if lparam[1] == -1 {
@@ -83,7 +85,8 @@ func (mdb *MainModel) Limited(lparam [2]int32)  {
     } else {
         ls = fmt.Sprintf(" LIMIT %d,%d", starter, lparam[1])
     }
-    fmt.Println(ls)
+    mdb.limited = ls
+    return mdb
 }
 
 func (mdb *MainModel) RowCount(parameter interface{}) (uint64, error) {
@@ -95,9 +98,7 @@ func (mdb *MainModel) RowCount(parameter interface{}) (uint64, error) {
         case nil :
             condition = ""
     }
-    fmt.Println(condition)
     sqlCommand := fmt.Sprintf("SELECT COUNT(*) FROM `%s` %s", mdb.table, condition)
-    fmt.Println(sqlCommand)
     err := mdb.DB.QueryRow(sqlCommand).Scan(&count)
     if err != nil {
         return 0, err
@@ -129,8 +130,8 @@ func (mdb *MainModel) InsertToDB(data map[string]interface{}) (uint64, error) {
     for field, value := range data {
         fields = append(fields, field)
         switch value.(type) {
-            case int, int32, int64 :
-                values = append(values, strconv.Itoa(value.(int)))
+            case int8, int16, int, int32, int64 :
+                values = append(values, strconv.Itoa(value.(int)))  
             case float32, float64 :
                 values = append(values, strconv.FormatFloat(value.(float64), 'G', -1, 64))
             case string :
@@ -141,7 +142,6 @@ func (mdb *MainModel) InsertToDB(data map[string]interface{}) (uint64, error) {
     fl := fmt.Sprintf("`%v`", strings.Join(fields, "`,`"))
     vl := fmt.Sprintf("'%v'", strings.Join(values, "','"))
     sqlCommand  := fmt.Sprintf("INSERT INTO `%s`(%s) VALUES(%s)", mdb.table, fl, vl)
-        fmt.Println(sqlCommand)
     result, err := mdb.DB.Exec(sqlCommand)
     if err != nil {
         return 0, err
@@ -152,6 +152,36 @@ func (mdb *MainModel) InsertToDB(data map[string]interface{}) (uint64, error) {
         return 0, err
     }
     return uint64(lastId), err
+}
+
+func (mdb *MainModel) UpdateData(data map[string]interface{}) (uint64, error) {
+    if mdb.DB == nil {
+        return 0, ErrConnectionNotFound
+    }
+    var newVal []string
+    var formatedStr string
+    for field, value := range data {
+        switch value.(type) {
+            case int8, int16, int, int32, int64 :
+                formatedStr = fmt.Sprintf("%v = %v", field, value.(int64))
+            case float32, float64 :
+                formatedStr = fmt.Sprintf("%v = %v", field, strconv.FormatFloat(value.(float64), 'G', -1, 64))
+            case string :
+                formatedStr = fmt.Sprintf("%v = '%s'", field, value.(string))
+        }
+        newVal = append(newVal, formatedStr)
+    }
+    sqlCommand := fmt.Sprintf("UPDATE %s SET %v %v", mdb.table, strings.Join(newVal, ","), mdb.condition)
+    result, err := mdb.DB.Exec(sqlCommand)
+    if err != nil {
+        return 0, err
+    }
+    affect, err := result.RowsAffected()
+    if err != nil {
+        return 0, err
+    }
+    
+    return uint64(affect), err
 }
 
 func (mdb *MainModel) CloseDB() {
