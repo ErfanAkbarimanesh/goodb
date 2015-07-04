@@ -1,6 +1,6 @@
 //Copyright (c) 2015 Erfan Akbarimanesh
 //The source code is completely free, you can customize for you'r self
-package main
+package goodb
 
 import (
     "database/sql"
