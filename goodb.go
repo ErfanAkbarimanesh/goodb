@@ -9,6 +9,7 @@ import (
     "errors"
     "strings"
     "strconv"
+    "sort"
 )
 
 type (
@@ -193,7 +194,7 @@ func (mdb *MainModel) UpdateData(data map[string]interface{}) (uint64, error) {
     return uint64(affect), err
 }
 
-func rowsResult(rs *sql.Rows) rowsType {
+func RowsResult(rs *sql.Rows) rowsType {
     cols, count := rowsColumn(rs)
     
     var (
@@ -202,11 +203,11 @@ func rowsResult(rs *sql.Rows) rowsType {
         storeAddr  []interface{}  =  make([]interface{}, len(crude))
         counter    uint64 = 0
     )
-    
+        
     for keyNum := range crude {
 		storeAddr[keyNum] = &crude[keyNum]
 	}
-    
+        
     for rs.Next() {
         sqlResult[counter] = make(map[string]interface{})
         CheckErr(rs.Scan(storeAddr...))
@@ -218,6 +219,21 @@ func rowsResult(rs *sql.Rows) rowsType {
     }
 
     return sqlResult
+}
+
+func FetchResults(input rowsType) []map[string]interface{} {
+    var keys []int
+    for k, _ := range input {
+        keys = append(keys, int(k))
+    }
+    sort.Ints(keys)
+    
+    var m []map[string]interface{}
+    
+    for _, k := range keys {
+        m = append(m, input[uint64(k)])
+    }
+    return m
 }
 
 func rowsColumn(rs *sql.Rows)  ([]string, int64) {
